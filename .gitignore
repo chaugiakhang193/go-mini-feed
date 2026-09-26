@@ -1,0 +1,15 @@
+# Secrets: only the example file is tracked
+.env
+.env.*
+!.env.example
+
+# Build output
+bin/
+*.exe
+
+# Runtime output (raw feed logs)
+logs/
+
+# Test artifacts
+*.out
+*.test
