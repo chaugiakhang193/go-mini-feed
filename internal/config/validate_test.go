@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -169,30 +170,48 @@ func TestAppValidateReportsAllProblemsAtOnce(t *testing.T) {
 	}, strings.Split(err.Error(), "\n"))
 }
 
-func TestAppValidateRedisDB(t *testing.T) {
-	tests := []struct {
-		name    string
-		db      int
-		wantErr string
-	}{
-		{name: "lowest database", db: 0},
-		{name: "highest database", db: 15},
-		{name: "negative", db: -1, wantErr: "redis.secdef_db must be between 0 and 15, got -1"},
-		{name: "above default database count", db: 16, wantErr: "redis.secdef_db must be between 0 and 15, got 16"},
+func setRedisDB(t *testing.T, app *App, key string, db int) {
+	t.Helper()
+	switch key {
+	case "redis.secdef_db":
+		app.Redis.SecDefDB = db
+	case "redis.stock_info_db":
+		app.Redis.StockInfoDB = db
+	case "redis.pubsub_db":
+		app.Redis.PubSubDB = db
+	default:
+		t.Fatalf("unknown Redis key %q", key)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			app, err := LoadApp("../../configs/config.yaml")
-			require.NoError(t, err)
+}
 
-			app.Redis.SecDefDB = tt.db
-			err = app.Validate()
-			if tt.wantErr == "" {
-				assert.NoError(t, err)
-				return
-			}
-			assert.EqualError(t, err, tt.wantErr)
-		})
+// Every Redis database field is checked on its own, so dropping the check of
+// any single field makes a case fail.
+func TestAppValidateRedisDB(t *testing.T) {
+	keys := []string{"redis.secdef_db", "redis.stock_info_db", "redis.pubsub_db"}
+	tests := []struct {
+		db      int
+		wantErr bool
+	}{
+		{db: 0},
+		{db: 15},
+		{db: -1, wantErr: true},
+		{db: 16, wantErr: true},
+	}
+	for _, key := range keys {
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("%s=%d", key, tt.db), func(t *testing.T) {
+				app, err := LoadApp("../../configs/config.yaml")
+				require.NoError(t, err)
+
+				setRedisDB(t, app, key, tt.db)
+				err = app.Validate()
+				if !tt.wantErr {
+					assert.NoError(t, err)
+					return
+				}
+				assert.EqualError(t, err, fmt.Sprintf("%s must be between 0 and 15, got %d", key, tt.db))
+			})
+		}
 	}
 }
 
