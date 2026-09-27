@@ -45,7 +45,9 @@ func MarketFromPath(path string) string {
 }
 
 // decodeFile rejects unknown keys, so a typo such as "prefech" fails loudly
-// instead of leaving the field at its zero value.
+// instead of leaving the field at its zero value. It also rejects a second
+// YAML document: Decode reads one document per call, so anything after a
+// "---" separator would otherwise be ignored without an error.
 func decodeFile(path string, out any) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -59,5 +61,14 @@ func decodeFile(path string, out any) error {
 		}
 		return fmt.Errorf("decode %s: %w", path, err)
 	}
-	return nil
+
+	var extra yaml.Node
+	switch err := dec.Decode(&extra); {
+	case errors.Is(err, io.EOF):
+		return nil
+	case err != nil:
+		return fmt.Errorf("decode %s: %w", path, err)
+	default:
+		return fmt.Errorf("decode %s: only one YAML document is allowed, found another at line %d", path, extra.Line)
+	}
 }

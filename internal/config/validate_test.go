@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -144,19 +145,62 @@ func TestMulticastValidate(t *testing.T) {
 	}
 }
 
+// With every field at its zero value, each required check must fire exactly
+// once. Removing any check makes the list differ.
 func TestAppValidateReportsAllProblemsAtOnce(t *testing.T) {
-	app := App{} // every field at its zero value
-	err := app.Validate()
+	err := (&App{}).Validate()
 	require.Error(t, err)
 
-	for _, want := range []string{
+	assert.Equal(t, []string{
 		"rabbitmq.vhost is required",
+		"rabbitmq.exchanges.raw is required",
+		"rabbitmq.exchanges.matched is required",
+		"rabbitmq.exchanges.bid_offer is required",
+		"rabbitmq.exchanges.index is required",
+		"rabbitmq.input_queue is required",
 		"rabbitmq.prefetch must be > 0, got 0",
+		"gateway.queue_size must be > 0, got 0",
+		"gateway.read_buffer_bytes must be > 0, got 0",
 		"gateway.read_deadline must be > 0, got 0s",
+		"gateway.raw_log.dir is required",
+		"gateway.raw_log.queue_size must be > 0, got 0",
 		"processor.partitions must be > 0, got 0",
-	} {
-		assert.Contains(t, err.Error(), want)
+		"processor.partition_buffer must be > 0, got 0",
+	}, strings.Split(err.Error(), "\n"))
+}
+
+func TestAppValidateRedisDB(t *testing.T) {
+	tests := []struct {
+		name    string
+		db      int
+		wantErr string
+	}{
+		{name: "lowest database", db: 0},
+		{name: "highest database", db: 15},
+		{name: "negative", db: -1, wantErr: "redis.secdef_db must be between 0 and 15, got -1"},
+		{name: "above default database count", db: 16, wantErr: "redis.secdef_db must be between 0 and 15, got 16"},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app, err := LoadApp("../../configs/config.yaml")
+			require.NoError(t, err)
+
+			app.Redis.SecDefDB = tt.db
+			err = app.Validate()
+			if tt.wantErr == "" {
+				assert.NoError(t, err)
+				return
+			}
+			assert.EqualError(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestGroupRawLogEnabled(t *testing.T) {
+	on, off := true, false
+	assert.False(t, Group{RawLog: nil}.RawLogEnabled(), "missing key")
+	assert.False(t, Group{RawLog: &off}.RawLogEnabled(), "explicit false")
+	assert.True(t, Group{RawLog: &on}.RawLogEnabled(), "explicit true")
 }
 
 func TestAppValidateReplicaMustDifferFromPrimary(t *testing.T) {

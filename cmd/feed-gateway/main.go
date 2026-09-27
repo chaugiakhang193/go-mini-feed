@@ -1,5 +1,5 @@
-// Command feed-gateway receives UDP multicast packets and forwards them,
-// unparsed, to RabbitMQ. For now it only loads and prints its configuration.
+// Command feed-gateway is the entry point of the multicast gateway. It loads
+// the YAML and environment configuration and prints the resolved values.
 package main
 
 import (

@@ -18,6 +18,24 @@ func setValidEnv(t *testing.T) {
 	t.Setenv("SERVER_IP_ADDRESS", "")
 }
 
+func TestLoadEnvReadsEveryField(t *testing.T) {
+	setValidEnv(t)
+	t.Setenv("SERVER_IP_ADDRESS", "192.0.2.10")
+	t.Setenv("REDIS_PASSWORD", "redis-secret")
+
+	env, err := LoadEnv()
+	require.NoError(t, err)
+	assert.Equal(t, &Env{
+		RabbitMQHost:     "localhost",
+		RabbitMQPort:     5672,
+		RabbitMQUser:     "lab",
+		RabbitMQPassword: "lab",
+		RedisAddr:        "localhost:6379",
+		RedisPassword:    "redis-secret",
+		ServerIPAddress:  "192.0.2.10",
+	}, env)
+}
+
 func TestLoadEnv(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -23,6 +23,12 @@ func (a *App) Validate() error {
 			errs = append(errs, fmt.Errorf("%s is required", name))
 		}
 	}
+	// A default Redis server has 16 logical databases, numbered 0-15.
+	redisDB := func(name string, v int) {
+		if v < 0 || v > 15 {
+			errs = append(errs, fmt.Errorf("%s must be between 0 and 15, got %d", name, v))
+		}
+	}
 
 	nonEmpty("rabbitmq.vhost", a.RabbitMQ.VHost)
 	nonEmpty("rabbitmq.exchanges.raw", a.RabbitMQ.Exchanges.Raw)
@@ -41,6 +47,10 @@ func (a *App) Validate() error {
 			}
 		}
 	}
+
+	redisDB("redis.secdef_db", a.Redis.SecDefDB)
+	redisDB("redis.stock_info_db", a.Redis.StockInfoDB)
+	redisDB("redis.pubsub_db", a.Redis.PubSubDB)
 
 	positive("gateway.queue_size", a.Gateway.QueueSize)
 	positive("gateway.read_buffer_bytes", a.Gateway.ReadBufferBytes)

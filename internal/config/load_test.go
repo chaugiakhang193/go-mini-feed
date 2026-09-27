@@ -71,6 +71,40 @@ groups:
 	assert.ErrorContains(t, err, `market "Demo Market"`)
 }
 
+func TestLoadRejectsContentAfterTheFirstDocument(t *testing.T) {
+	valid, err := os.ReadFile("../../configs/config.yaml")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		trailer string
+		wantErr string
+	}{
+		{
+			name:    "second document",
+			trailer: "---\nunknown_after_first_document: true\n",
+			wantErr: "only one YAML document is allowed",
+		},
+		{
+			name:    "empty second document",
+			trailer: "---\n",
+			wantErr: "only one YAML document is allowed",
+		},
+		{
+			name:    "broken second document",
+			trailer: "---\nkey: [unclosed\n",
+			wantErr: "decode",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := writeFile(t, "config.yaml", string(valid)+tt.trailer)
+			_, err := LoadApp(path)
+			assert.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
 func TestLoadEmptyFile(t *testing.T) {
 	_, err := LoadApp(writeFile(t, "config.yaml", ""))
 	assert.ErrorContains(t, err, "file is empty")
