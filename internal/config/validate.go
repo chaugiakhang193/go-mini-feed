@@ -34,7 +34,6 @@ func (a *App) Validate() error {
 	nonEmpty("rabbitmq.exchanges.raw", a.RabbitMQ.Exchanges.Raw)
 	nonEmpty("rabbitmq.exchanges.matched", a.RabbitMQ.Exchanges.Matched)
 	nonEmpty("rabbitmq.exchanges.bid_offer", a.RabbitMQ.Exchanges.BidOffer)
-	nonEmpty("rabbitmq.exchanges.index", a.RabbitMQ.Exchanges.Index)
 	nonEmpty("rabbitmq.input_queue", a.RabbitMQ.InputQueue)
 	positive("rabbitmq.prefetch", a.RabbitMQ.Prefetch)
 

@@ -157,7 +157,6 @@ func TestAppValidateReportsAllProblemsAtOnce(t *testing.T) {
 		"rabbitmq.exchanges.raw is required",
 		"rabbitmq.exchanges.matched is required",
 		"rabbitmq.exchanges.bid_offer is required",
-		"rabbitmq.exchanges.index is required",
 		"rabbitmq.input_queue is required",
 		"rabbitmq.prefetch must be > 0, got 0",
 		"gateway.queue_size must be > 0, got 0",

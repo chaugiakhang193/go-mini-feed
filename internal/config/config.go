@@ -25,7 +25,6 @@ type Exchanges struct {
 	Raw      string `yaml:"raw"`
 	Matched  string `yaml:"matched"`
 	BidOffer string `yaml:"bid_offer"`
-	Index    string `yaml:"index"`
 }
 
 type Multiplexer struct {

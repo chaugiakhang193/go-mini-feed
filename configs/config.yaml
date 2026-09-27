@@ -6,7 +6,6 @@ rabbitmq:
     raw: demo_all_raw
     matched: demo_matched
     bid_offer: demo_bid_offer
-    index: demo_index
   input_queue: LAB_demo_all_messages
   prefetch: 1000
 
