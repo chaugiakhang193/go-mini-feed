@@ -1,0 +1,34 @@
+# Structure only. Hosts, credentials and the NIC address come from the environment (.env).
+
+rabbitmq:
+  vhost: /lab
+  exchanges:
+    raw: demo_all_raw
+    matched: demo_matched
+    bid_offer: demo_bid_offer
+    index: demo_index
+  input_queue: LAB_demo_all_messages
+  prefetch: 1000
+
+multiplexer:
+  enabled: true
+  pool_size: 64
+  replicas:
+    - vhost: /lab-replica
+
+redis:
+  secdef_db: 1
+  stock_info_db: 2
+  pubsub_db: 4
+
+gateway:
+  queue_size: 10000
+  read_buffer_bytes: 8388608
+  read_deadline: 500ms
+  raw_log:
+    dir: logs
+    queue_size: 5000
+
+processor:
+  partitions: 16
+  partition_buffer: 1000

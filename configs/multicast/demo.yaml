@@ -1,0 +1,30 @@
+# Multicast groups of the DEMO market. The market type is taken from the file name.
+
+groups:
+  - name: security_definition
+    address: 239.255.10.1
+    port: 46001
+    raw_log: true
+    exchange: demo_all_raw
+    routing_key: all
+
+  - name: price
+    address: 239.255.10.2
+    port: 46002
+    raw_log: true
+    exchange: demo_all_raw
+    routing_key: all
+
+  - name: snapshot
+    address: 239.255.10.3
+    port: 46003
+    raw_log: false
+    exchange: demo_all_raw
+    routing_key: all
+
+  - name: heartbeat
+    address: 239.255.10.4
+    port: 46004
+    raw_log: false
+    exchange: demo_all_raw
+    routing_key: all

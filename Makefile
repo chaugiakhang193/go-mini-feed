@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f deployments/docker-compose.yml
 
-.PHONY: help up down ps logs fmt vet test race
+.PHONY: help up down ps logs config fmt vet test race
 
 help: ## List available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  %-8s %s\n", $$1, $$2}'
@@ -16,6 +16,9 @@ ps: ## Show container status
 
 logs: ## Follow container logs
 	$(COMPOSE) logs -f
+
+config: ## Load and print the gateway configuration
+	go run ./cmd/feed-gateway
 
 fmt: ## Format all Go code
 	go fmt ./...
