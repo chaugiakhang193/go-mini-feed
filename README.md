@@ -15,6 +15,7 @@ measure what happens when they are done wrong.
 |---|---|
 | Local stack: RabbitMQ (vhosts `/lab`, `/lab-replica`) and Redis | done |
 | Configuration: YAML structure + environment values, validated on load | done |
+| FIX 4.4 codec: encoding, decoding, BodyLength and CheckSum checks | done |
 | `feed-gateway` | loads and prints its configuration; networking planned |
 | `feed-sim` (exchange simulator) | planned |
 | `feed-processor` | planned |
@@ -118,8 +119,9 @@ Downstream consumers declare their own queues and bind the routing keys they nee
   RabbitMQ's
   [consumer acknowledgements and publisher confirms](https://www.rabbitmq.com/docs/confirms).
 - **Synthetic, locally scoped data.** Multicast groups live in `239.255.0.0/16`, the IPv4 local scope defined in
-  [RFC 2365](https://www.rfc-editor.org/rfc/rfc2365). Messages use standard [FIX 4.4](https://www.fixtrading.org/standards/fix-4-4/)
-  tags only.
+  [RFC 2365](https://www.rfc-editor.org/rfc/rfc2365). Messages use [FIX 4.4](https://www.fixtrading.org/standards/fix-4-4/)
+  framing and public tags only: FIX 4.4 tags plus three defined from FIX 5.0 SP1 onwards (MarketSegmentID 1300,
+  HighLimitPrice 1149, LowLimitPrice 1148).
 
 ## Configuration
 
@@ -155,6 +157,7 @@ RabbitMQ listens on `localhost:5673` with its management UI at `http://localhost
 ```
 cmd/feed-gateway/          gateway entry point
 internal/config/           YAML + environment loading and validation
+internal/fix/              FIX tag=value encoding and decoding
 configs/                   config.yaml and one multicast file per market
 deployments/               docker-compose and RabbitMQ definitions
 Makefile                   make help lists every target
