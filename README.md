@@ -16,6 +16,7 @@ measure what happens when they are done wrong.
 | Local stack: RabbitMQ (vhosts `/lab`, `/lab-replica`) and Redis | done |
 | Configuration: YAML structure + environment values, validated on load | done |
 | FIX 4.4 codec: encoding, decoding, BodyLength and CheckSum checks | done |
+| RabbitMQ labs: unroutable messages, publisher confirms, durability across a restart, retry limits | done |
 | `feed-gateway` | loads and prints its configuration; networking planned |
 | `feed-sim` (exchange simulator) | planned |
 | `feed-processor` | planned |
@@ -152,12 +153,42 @@ make down
 RabbitMQ listens on `localhost:5673` with its management UI at `http://localhost:15673`, and Redis on
 `localhost:6381`. The `lab` / `lab` user exists for local development only, and every port binds to `127.0.0.1`.
 
+## Labs
+
+Each program under `labs/rabbitmq/` tests one broker behaviour and prints what it measured. They need the local
+stack (`make up`) and use only `lab_*` exchanges and queues on vhost `/lab`. Every run that builds an experiment
+deletes those objects and declares them again first. The results below are from RabbitMQ 4.3.6.
+
+```bash
+go run ./labs/rabbitmq/unroutable
+go run ./labs/rabbitmq/confirms -n 1000
+go run ./labs/rabbitmq/retrylimit -scenario xdeath
+go run ./labs/rabbitmq/retrylimit -scenario limit
+
+# durability runs in two phases with a broker restart in between
+go run ./labs/rabbitmq/durability -phase publish
+docker compose -f deployments/docker-compose.yml restart rabbitmq
+go run ./labs/rabbitmq/durability -phase count
+```
+
+| Lab | Result |
+|---|---|
+| `unroutable` | Publishing to an exchange with no queue bound returns `nil` and the broker drops the message. A queue bound afterwards holds only the message published after the bind. |
+| `confirms` | Waiting for each confirm is far slower than collecting the confirms at the end. An unroutable message is still acked; with `mandatory` the broker also returns it with code 312. A full queue set to `reject-publish` answers with a nack. |
+| `durability` | In a durable classic queue the transient messages are gone after the restart and the persistent ones remain. A quorum queue keeps both. |
+| `retrylimit` | A consumer can stop retrying by counting rejections in the `x-death` header. A quorum queue with `x-delivery-limit` dead-letters a message returned with `basic.reject`, but keeps redelivering one returned with `basic.nack`. |
+
+Background reading: RabbitMQ's guides on [publishers](https://www.rabbitmq.com/docs/publishers),
+[confirms](https://www.rabbitmq.com/docs/confirms), [dead lettering](https://www.rabbitmq.com/docs/dlx) and
+[quorum queues](https://www.rabbitmq.com/docs/quorum-queues).
+
 ## Layout
 
 ```
 cmd/feed-gateway/          gateway entry point
 internal/config/           YAML + environment loading and validation
 internal/fix/              FIX tag=value encoding and decoding
+labs/rabbitmq/             RabbitMQ experiments, one program each
 configs/                   config.yaml and one multicast file per market
 deployments/               docker-compose and RabbitMQ definitions
 Makefile                   make help lists every target
