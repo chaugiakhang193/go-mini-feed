@@ -16,7 +16,7 @@ measure what happens when they are done wrong.
 | Local stack: RabbitMQ (vhosts `/lab`, `/lab-replica`) and Redis | done |
 | Configuration: YAML structure + environment values, validated on load | done |
 | FIX 4.4 codec: encoding, decoding, BodyLength and CheckSum checks | done |
-| RabbitMQ labs: unroutable messages, publisher confirms, durability across a restart, retry limits | done |
+| RabbitMQ labs: unroutable messages, publisher confirms, durability across a restart, retry limits, per-key order in a worker pool | done |
 | `feed-gateway` | loads and prints its configuration; networking planned |
 | `feed-sim` (exchange simulator) | planned |
 | `feed-processor` | planned |
@@ -165,6 +165,11 @@ go run ./labs/rabbitmq/confirms -n 1000
 go run ./labs/rabbitmq/retrylimit -scenario xdeath
 go run ./labs/rabbitmq/retrylimit -scenario limit
 
+# keyorder seeds the input queue, runs the pool, then audits the results per key
+go run ./labs/rabbitmq/keyorder -phase seed
+go run ./labs/rabbitmq/keyorder -phase run -mode lanes -lanes 4
+go run ./labs/rabbitmq/keyorder -phase audit
+
 # durability runs in two phases with a broker restart in between
 go run ./labs/rabbitmq/durability -phase publish
 docker compose -f deployments/docker-compose.yml restart rabbitmq
@@ -177,6 +182,7 @@ go run ./labs/rabbitmq/durability -phase count
 | `confirms` | Waiting for each confirm is far slower than collecting the confirms at the end. An unroutable message is still acked; with `mandatory` the broker also returns it with code 312. A full queue set to `reject-publish` answers with a nack. |
 | `durability` | In a durable classic queue the transient messages are gone after the restart and the persistent ones remain. A quorum queue keeps both. |
 | `retrylimit` | A consumer can stop retrying by counting rejections in the `x-death` header. A quorum queue with `x-delivery-limit` dead-letters a message returned with `basic.reject`, but keeps redelivering one returned with `basic.nack`. |
+| `keyorder` | 2000 messages over 4 keys. With 4 lanes (one worker each, the lane chosen by FNV-1a of the key) every key keeps its order. 60 lanes take the same time, since only 4 of them get work. One lane holding 1000 deliveries overflows, the requeued deliveries come back behind newer ones, and 950 to 964 results arrive out of order (the count varies by run). One goroutine per message is several times faster and puts most results out of order. |
 
 Background reading: RabbitMQ's guides on [publishers](https://www.rabbitmq.com/docs/publishers),
 [confirms](https://www.rabbitmq.com/docs/confirms), [dead lettering](https://www.rabbitmq.com/docs/dlx) and
