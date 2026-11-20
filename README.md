@@ -121,7 +121,8 @@ Downstream consumers declare their own queues and bind the routing keys they nee
   [consumer acknowledgements and publisher confirms](https://www.rabbitmq.com/docs/confirms).
 - **Repeating groups are rebuilt from ordered fields.** A FIX group repeats the same tags once per entry and has no
   end marker, so the decoder keeps fields in wire order, starts an entry at the group's first tag and ends the group
-  at the first tag that is not a member. See
+  at the first tag that is not a member. Parsing into a map keeps one value per tag, and searching for `83=` as a
+  substring also matches `283=`; `labs/fixtraps` reproduces both next to the correct decoder. See
   [anatomy of a FIX message](https://www.onixs.biz/insights/anatomy-of-a-fix-message).
 - **Synthetic, locally scoped data.** Multicast groups live in `239.255.0.0/16`, the IPv4 local scope defined in
   [RFC 2365](https://www.rfc-editor.org/rfc/rfc2365). Messages use [FIX 4.4](https://www.fixtrading.org/standards/fix-4-4/)
@@ -192,6 +193,16 @@ Background reading: RabbitMQ's guides on [publishers](https://www.rabbitmq.com/d
 [confirms](https://www.rabbitmq.com/docs/confirms), [dead lettering](https://www.rabbitmq.com/docs/dlx) and
 [quorum queues](https://www.rabbitmq.com/docs/quorum-queues).
 
+`labs/fixtraps` needs no stack. It is a test package that runs two common FIX parsing mistakes and the decoder in
+`internal/fix` on the same bytes:
+
+```bash
+go test -v ./labs/fixtraps
+```
+
+An order book with six entries parsed into a map keeps one price, the last ask, and every level looks like an ask.
+Searching for `83=` in a message without tag 83 returns the value of LocationID (`283`).
+
 ## Layout
 
 ```
@@ -199,6 +210,7 @@ cmd/feed-gateway/          gateway entry point
 internal/config/           YAML + environment loading and validation
 internal/fix/              FIX tag=value encoding, decoding and repeating groups
 labs/rabbitmq/             RabbitMQ experiments, one program each
+labs/fixtraps/             deliberate FIX parsing mistakes next to the correct decoder
 configs/                   config.yaml and one multicast file per market
 deployments/               docker-compose and RabbitMQ definitions
 Makefile                   make help lists every target
