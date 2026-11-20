@@ -117,7 +117,8 @@ func (m Message) MsgType() string {
 }
 
 // Get returns the value of the first field with the given tag. A tag inside a
-// repeating group appears once per entry, and Get sees only the first of them.
+// repeating group appears once per entry and Get sees only the first of them,
+// so group fields are read through Entries.
 func (m Message) Get(tag int) (string, bool) {
 	return lookup(m.fields, tag)
 }
