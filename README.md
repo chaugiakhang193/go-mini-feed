@@ -17,7 +17,7 @@ measure what happens when they are done wrong.
 | Configuration: YAML structure + environment values, validated on load | done |
 | FIX 4.4 codec: encoding, decoding, BodyLength and CheckSum checks, repeating groups | done |
 | RabbitMQ labs: unroutable messages, publisher confirms, durability across a restart, retry limits, per-key order in a worker pool | done |
-| `feed-gateway` | loads and prints its configuration; networking planned |
+| `feed-gateway` | receives every group, keeps the raw feed on disk and counts packets; publishing planned |
 | `feed-sim` (exchange simulator) | done |
 | `feed-processor` | planned |
 | `feed-consumer` | planned |
@@ -171,6 +171,30 @@ go run ./cmd/feed-sim -scenario stream -count 200 -drop 0.1 -dup 0.05 -reorder 0
 assigned, so a receiver sees gaps, repeats and out-of-order numbers. `-transport unicast` sends to `127.0.0.1` on the
 same ports instead of the groups. At the end it logs one `op=sim_done` line per packet kind with the counts.
 
+The gateway needs no containers yet. Start it first, then the simulator in a second terminal; Ctrl+C stops it:
+
+```bash
+make gateway                                          # go run ./cmd/feed-gateway
+go run ./cmd/feed-sim -scenario stream -rate 50 -count 100
+```
+
+It joins every group on the interface that owns `SERVER_IP_ADDRESS` (empty: the kernel picks one from its routing
+table). An address on no interface, or on an interface that is down or has no `MULTICAST` flag, such as a Linux
+loopback, stops the start-up: joining a group there succeeds and then receives nothing. Groups with `raw_log: true`
+are written to `logs/<UTC date>/<market>/<group>.raw`, one line per packet: the receive time (RFC 3339, UTC), the
+payload length and the payload bytes unchanged, SOH and line breaks included. A full raw log queue drops packets and
+logs `op=raw_log_dropped` instead of slowing the socket reader. The gateway logs `op=packets` every 10 seconds while
+packets arrive and `op=gateway_stopped` with the count per group on exit.
+
+Each socket asks for `read_buffer_bytes` of receive buffer. Linux caps the request at `net.core.rmem_max` without an
+error, so the gateway reads the granted size back and logs it:
+
+```
+WARN op=read_buffer group=price requested=8388608 granted=4194304 hint=raise net.core.rmem_max
+```
+
+The gateway keeps running with the smaller buffer; a burst larger than the granted size is dropped by the kernel.
+
 ## Labs
 
 Each program under `labs/rabbitmq/` tests one broker behaviour and prints what it measured. They need the local
@@ -232,10 +256,12 @@ a single goroutine prints from it, so lines of different groups never interleave
 ## Layout
 
 ```
-cmd/feed-gateway/          gateway entry point
+cmd/feed-gateway/          gateway: joins the groups, raw log, packet counts, shutdown on Ctrl+C
 cmd/feed-sim/              exchange simulator: flags, UDP sockets, shutdown on Ctrl+C
 internal/config/           YAML + environment loading and validation
 internal/fix/              FIX tag=value encoding, decoding and repeating groups
+internal/logger/           raw feed files per day, market and group
+internal/multicast/        interface choice, group join, receive buffer check, read loop
 internal/sim/              synthetic market: instruments, packets, order books, trades, scenarios, network faults
 labs/rabbitmq/             RabbitMQ experiments, one program each
 labs/fixtraps/             deliberate FIX parsing mistakes next to the correct decoder
