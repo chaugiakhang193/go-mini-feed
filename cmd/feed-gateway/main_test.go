@@ -100,13 +100,19 @@ func TestRunCountsEachGroupAndStopsOnCancel(t *testing.T) {
 	assert.LessOrEqual(t, time.Since(cancelled), testDeadline+100*time.Millisecond)
 
 	// The day directory is matched with a wildcard so the test does not
-	// depend on the date at which the packets were received.
+	// depend on the date at which the packets were received. Two packets that
+	// arrive on both sides of midnight UTC land in two files, so the lines are
+	// summed over every match.
 	rawA, err := filepath.Glob(filepath.Join(dir, "*", "demo", "a.raw"))
 	require.NoError(t, err)
-	require.Len(t, rawA, 1)
-	lines, err := os.ReadFile(rawA[0])
-	require.NoError(t, err)
-	assert.Equal(t, 2, bytes.Count(lines, []byte("\n")))
+	require.NotEmpty(t, rawA)
+	var lineCount int
+	for _, path := range rawA {
+		lines, err := os.ReadFile(path)
+		require.NoError(t, err)
+		lineCount += bytes.Count(lines, []byte("\n"))
+	}
+	assert.Equal(t, 2, lineCount)
 	rawB, err := filepath.Glob(filepath.Join(dir, "*", "demo", "b.raw"))
 	require.NoError(t, err)
 	assert.Empty(t, rawB)
