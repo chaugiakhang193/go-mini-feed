@@ -139,3 +139,24 @@ func TestRawLogsAFlushErrorOnceAndFailsClose(t *testing.T) {
 	assert.NotContains(t, err.Error(), "no space left")
 	assert.Equal(t, 1, strings.Count(logs.String(), "op=raw_log_write_failed"))
 }
+
+func TestRawLogsAFlushErrorOnCloseOnce(t *testing.T) {
+	if _, err := os.Stat("/dev/full"); err != nil {
+		t.Skipf("no /dev/full: %v", err)
+	}
+	logs := captureLog(t)
+	dir := t.TempDir()
+	groupDir := filepath.Join(dir, "2026-11-21", "demo")
+	require.NoError(t, os.MkdirAll(groupDir, 0o755))
+	require.NoError(t, os.Symlink("/dev/full", filepath.Join(groupDir, "price.raw")))
+	r := NewRaw(dir, "demo", 8)
+
+	// The payload fits in the 4096-byte bufio buffer, so Write never touches
+	// the file. Close comes before the flush interval, which leaves the flush
+	// in closeFiles as the only place the ENOSPC can show up.
+	require.True(t, r.Record(packet("price", "2026-11-21T09:00:00Z", "0123456789")))
+	err := r.Close()
+
+	require.ErrorIs(t, err, ErrWrite)
+	assert.Equal(t, 1, strings.Count(logs.String(), "op=raw_log_write_failed"))
+}
