@@ -11,9 +11,9 @@ import (
 var ErrGroup = errors.New("invalid FIX repeating group")
 
 // GroupSpec describes one repeating group. FIX puts no end marker after a
-// group: an entry starts at DelimiterTag, and the group ends at the first tag
-// that is not in Members. The member list is therefore required, not just
-// informative.
+// group. An entry starts at DelimiterTag, and the group ends at the first tag
+// that is not in Members. Without the member list the end of the group cannot
+// be found.
 type GroupSpec struct {
 	CountTag     int
 	DelimiterTag int
@@ -78,7 +78,7 @@ func (m Message) Entries(spec GroupSpec) ([]Entry, error) {
 		}
 		current := &entries[len(entries)-1]
 		// A member seen twice in one entry means the next entry's delimiter
-		// is missing; merging the two entries would pair the wrong fields.
+		// is missing. Merging the two entries would pair the wrong fields.
 		if _, seen := current.Get(f.Tag); seen {
 			return nil, fmt.Errorf("%w: entry %d repeats tag %d, delimiter %d missing",
 				ErrGroup, len(entries), f.Tag, spec.DelimiterTag)

@@ -1,6 +1,6 @@
-// Package fixtraps reproduces two common FIX parsing mistakes so they can be
-// compared with internal/fix on the same bytes. The functions here are wrong
-// on purpose; nothing outside this package calls them.
+// Package fixtraps reproduces two common FIX parsing mistakes next to the
+// decoder in internal/fix, on the same bytes. The functions here are wrong on
+// purpose. Nothing outside this package calls them.
 package fixtraps
 
 import (
@@ -10,9 +10,9 @@ import (
 	"github.com/chaugiakhang193/go-mini-feed/internal/fix"
 )
 
-// MapParse stores every field in a map keyed by tag. A repeating group
-// repeats its tags once per entry and a map keeps one value per key, so each
-// group tag ends up holding the value of the last entry only.
+// MapParse stores every field in a map keyed by tag. A map keeps one value
+// per key. A tag that appears in several entries of a repeating group keeps
+// only its value from the last of those entries.
 func MapParse(raw []byte) map[int]string {
 	fields := make(map[int]string)
 	for _, field := range bytes.Split(raw, []byte{fix.SOH}) {
@@ -30,8 +30,8 @@ func MapParse(raw []byte) map[int]string {
 }
 
 // FindTag looks a tag up by searching for "<tag>=" anywhere in the message.
-// Nothing requires the match to start right after a SOH, so the pattern also
-// matches the tail of a longer tag: "83=" is found inside "283=".
+// The match is not required to start right after a SOH. The pattern also
+// matches the tail of a longer tag, and "83=" is found inside "283=".
 func FindTag(raw []byte, tag int) (string, bool) {
 	key := []byte(strconv.Itoa(tag) + "=")
 	at := bytes.Index(raw, key)

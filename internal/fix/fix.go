@@ -1,5 +1,5 @@
-// Package fix encodes and decodes FIX tag=value messages: the FIX 4.4
-// framing (BeginString, BodyLength, CheckSum) and repeating groups.
+// Package fix encodes and decodes FIX tag=value messages. It handles the FIX
+// 4.4 framing (BeginString, BodyLength, CheckSum) and repeating groups.
 package fix
 
 import (

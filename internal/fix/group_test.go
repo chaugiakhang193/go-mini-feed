@@ -91,7 +91,7 @@ func TestEntriesEndAtFirstNonMember(t *testing.T) {
 	msg := mustDecode(t, "X", []Field{
 		{TagNoMDEntries, "1"},
 		{TagMDUpdateAction, "0"}, {TagMDEntryType, "2"}, {TagMDEntryPx, "25000"},
-		{TagTransactTime, "20260928-02:15:00.120"},
+		{TagTransactTime, "20260928-02:15:00.120"}, {TagMDEntrySize, "300"},
 	})
 
 	entries, err := msg.Entries(IncrementalEntries)
@@ -100,6 +100,8 @@ func TestEntriesEndAtFirstNonMember(t *testing.T) {
 	assert.Len(t, entries[0], 3, "tag 60 belongs to the message, not to the entry")
 	_, inEntry := entries[0].Get(TagTransactTime)
 	assert.False(t, inEntry)
+	_, sizeInEntry := entries[0].Get(TagMDEntrySize)
+	assert.False(t, sizeInEntry, "a member tag after tag 60 is outside the group")
 }
 
 func TestEntriesWithoutGroup(t *testing.T) {
@@ -112,8 +114,8 @@ func TestEntriesWithoutGroup(t *testing.T) {
 }
 
 func TestEntriesEmptyGroup(t *testing.T) {
-	// FIX 4.4 defines NumInGroup as positive; a zero count still carries no
-	// entries, so it reads as an empty group rather than an error.
+	// FIX 4.4 defines NumInGroup as positive. A zero count still carries no
+	// entries, and Entries treats it as an empty group instead of an error.
 	msg := mustDecode(t, "X", []Field{{TagSecurityID, "XX000000AAA9"}, {TagNoMDEntries, "0"}})
 
 	entries, err := msg.Entries(IncrementalEntries)
