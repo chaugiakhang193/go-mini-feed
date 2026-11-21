@@ -77,9 +77,7 @@ func (l *Listener) Run(ctx context.Context, out chan<- Packet) error {
 		if err != nil {
 			switch {
 			case errors.Is(err, os.ErrDeadlineExceeded):
-				if ctx.Err() != nil {
-					return nil
-				}
+				// The top of the loop checks ctx before the next read.
 				continue
 			case errors.Is(err, net.ErrClosed):
 				return nil
