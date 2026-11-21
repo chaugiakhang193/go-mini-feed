@@ -44,7 +44,7 @@ type Listener struct {
 }
 
 // NewListener returns a listener for group that reads from conn. Each Read
-// waits at most deadline, which bounds how long Run takes to notice a
+// waits at most deadline. That bounds how long Run takes to notice a
 // cancelled context. A nil rec records nothing.
 func NewListener(group string, conn reader, deadline time.Duration, rec Recorder) *Listener {
 	return &Listener{group: group, conn: conn, deadline: deadline, rec: rec}
@@ -56,14 +56,14 @@ func (l *Listener) Group() string {
 }
 
 // Run sends every datagram to out until ctx ends or the socket is closed, and
-// then returns nil. Any other socket error is returned, since a socket that
-// fails once usually keeps failing. A full out blocks Run, which keeps every
+// then returns nil. Any other socket error is returned. A socket that fails
+// once usually keeps failing. A full out blocks Run. Run then keeps every
 // packet and leaves the overflow to the kernel receive buffer.
 func (l *Listener) Run(ctx context.Context, out chan<- Packet) error {
 	buf := make([]byte, maxDatagram)
 	for {
-		// When out has room and ctx is done, the select below picks either
-		// case at random, so the context is checked before every read.
+		// The context is checked before every read. When out has room and
+		// ctx is done, the select below picks either case at random.
 		if ctx.Err() != nil {
 			return nil
 		}
@@ -86,7 +86,7 @@ func (l *Listener) Run(ctx context.Context, out chan<- Packet) error {
 			}
 		}
 
-		// buf is reused by the next Read, so the packet gets its own copy.
+		// buf is reused by the next Read. The packet gets its own copy.
 		p := Packet{Group: l.group, ReceivedAt: time.Now().UTC(), Data: bytes.Clone(buf[:n])}
 		if l.rec != nil {
 			l.rec.Record(p)

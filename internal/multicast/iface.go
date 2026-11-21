@@ -1,4 +1,4 @@
-// Package multicast receives UDP multicast datagrams: it picks the network
+// Package multicast receives UDP multicast datagrams. It picks the network
 // interface that joins the groups and reads each group's socket until the
 // context ends.
 package multicast
@@ -12,7 +12,8 @@ import (
 
 // Errors returned by FindInterface, wrapped with the address and the
 // interface name. A host that joins a group on the wrong card gets no error
-// from the kernel and receives nothing, so these are reported at startup.
+// from the kernel and receives nothing. These errors report the mistake at
+// startup instead.
 var (
 	ErrNoInterface   = errors.New("no interface has this address")
 	ErrNotMulticast  = errors.New("interface has no multicast flag")
@@ -26,8 +27,8 @@ type candidate struct {
 }
 
 // FindInterface returns the interface that owns the IPv4 address ip. An empty
-// ip returns a nil interface and no error, which lets the kernel pick the card
-// from its routing table.
+// ip returns a nil interface and no error. The kernel then picks the card from
+// its routing table.
 func FindInterface(ip string) (*net.Interface, error) {
 	if ip == "" {
 		return nil, nil
@@ -53,7 +54,7 @@ func FindInterface(ip string) (*net.Interface, error) {
 }
 
 // match picks the candidate that owns want and checks that it can receive
-// multicast. It reads no host state, so tests pass fake interfaces.
+// multicast. It reads no host state. Tests pass it fake interfaces.
 func match(want netip.Addr, cands []candidate) (*net.Interface, error) {
 	for _, c := range cands {
 		if !hasAddr(c.addrs, want) {
@@ -72,7 +73,7 @@ func match(want netip.Addr, cands []candidate) (*net.Interface, error) {
 }
 
 // hasAddr reports whether one of addrs is want, ignoring the prefix length.
-// Interface addresses come as 16-byte IPv4-mapped values, so they are unmapped
+// Interface addresses come as 16-byte IPv4-mapped values. They are unmapped
 // before the comparison.
 func hasAddr(addrs []net.Addr, want netip.Addr) bool {
 	for _, a := range addrs {

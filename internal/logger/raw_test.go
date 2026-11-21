@@ -55,7 +55,7 @@ func TestRawFilesFollowTheReceiveDateAndKeepBytes(t *testing.T) {
 	after, err := os.ReadFile(filepath.Join(dir, "2026-11-22", "demo", "price.raw"))
 	require.NoError(t, err)
 	// The length field counts every payload byte, SOH and the trailing LF
-	// included, so a reader can split the file without scanning for line ends.
+	// included. A reader can split the file without scanning for line ends.
 	assert.Equal(t, "2026-11-21T23:59:59.9Z 15 "+payload+"\n", string(before))
 	assert.Equal(t, "2026-11-22T00:00:00.1Z 15 "+payload+"\n", string(after))
 }
@@ -130,8 +130,8 @@ func TestRawLogsAFlushErrorOnceAndFailsClose(t *testing.T) {
 	require.NoError(t, os.Symlink("/dev/full", filepath.Join(groupDir, "price.raw")))
 	r := NewRaw(dir, "demo", 8)
 
-	// The payload is larger than the 4096-byte bufio buffer, so the write
-	// reaches the file at once and fails with ENOSPC.
+	// The payload is larger than the 4096-byte bufio buffer. The write reaches
+	// the file at once and fails with ENOSPC.
 	require.True(t, r.Record(packet("price", "2026-11-21T09:00:00Z", strings.Repeat("x", 5000))))
 	err := r.Close()
 
@@ -151,9 +151,9 @@ func TestRawLogsAFlushErrorOnCloseOnce(t *testing.T) {
 	require.NoError(t, os.Symlink("/dev/full", filepath.Join(groupDir, "price.raw")))
 	r := NewRaw(dir, "demo", 8)
 
-	// The payload fits in the 4096-byte bufio buffer, so Write never touches
-	// the file. Close comes before the flush interval, which leaves the flush
-	// in closeFiles as the only place the ENOSPC can show up.
+	// The payload fits in the 4096-byte bufio buffer. Write never touches the
+	// file. Close comes before the flush interval. The flush in closeFiles is
+	// the only place the ENOSPC can show up.
 	require.True(t, r.Record(packet("price", "2026-11-21T09:00:00Z", "0123456789")))
 	err := r.Close()
 

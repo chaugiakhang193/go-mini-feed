@@ -9,8 +9,8 @@ import (
 
 // ReadBuffer is the socket receive buffer asked for and the size the kernel
 // actually granted. SetReadBuffer succeeds even when the kernel caps the
-// size, so only the read-back value shows a short buffer. Measured is false
-// on systems where the granted size is not read back.
+// size. Only the read-back value shows a short buffer. Measured is false on
+// systems where the granted size is not read back.
 type ReadBuffer struct {
 	Requested int
 	Granted   int

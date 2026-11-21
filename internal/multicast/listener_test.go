@@ -81,7 +81,7 @@ func TestRunGivesEachDatagramItsOwnBytes(t *testing.T) {
 	require.NoError(t, err)
 	_, err = client.Write([]byte("BBB"))
 	require.NoError(t, err)
-	// Both datagrams are read before the channel is drained, so a packet that
+	// Both datagrams are read before the channel is drained. A packet that
 	// shared the read buffer would show the second payload twice.
 	require.Eventually(t, func() bool { return len(out) == 2 }, time.Second, 5*time.Millisecond)
 
@@ -137,7 +137,7 @@ func TestRunStopsWithinADeadlineWhenIdle(t *testing.T) {
 
 func TestRunReturnsNilOnceTheSocketIsClosed(t *testing.T) {
 	conn, _ := listenLoopback(t)
-	// The deadline is far longer than the wait, so only the close can end Run.
+	// The deadline is far longer than the wait. Only the close can end Run.
 	done := start(context.Background(), NewListener("price", conn, 10*time.Second, nil), make(chan Packet))
 
 	time.Sleep(testDeadline / 2)
@@ -146,8 +146,9 @@ func TestRunReturnsNilOnceTheSocketIsClosed(t *testing.T) {
 	assert.NoError(t, waitRun(t, done, time.Second))
 }
 
-// failingReader returns err from every Read until closed is set, then
-// net.ErrClosed, so a Run that ignores the error can still be stopped.
+// failingReader returns err from every Read until closed is set. After that it
+// returns net.ErrClosed. A Run that ignores the error can then still be
+// stopped.
 type failingReader struct {
 	err    error
 	closed atomic.Bool

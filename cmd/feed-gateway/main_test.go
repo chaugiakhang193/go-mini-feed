@@ -101,7 +101,7 @@ func TestRunCountsEachGroupAndStopsOnCancel(t *testing.T) {
 
 	// The day directory is matched with a wildcard so the test does not
 	// depend on the date at which the packets were received. Two packets that
-	// arrive on both sides of midnight UTC land in two files, so the lines are
+	// arrive on both sides of midnight UTC land in two files. The lines are
 	// summed over every match.
 	rawA, err := filepath.Glob(filepath.Join(dir, "*", "demo", "a.raw"))
 	require.NoError(t, err)
@@ -157,8 +157,8 @@ func TestRecorderForSkipsGroupsWithoutRawLog(t *testing.T) {
 
 	assert.Same(t, raw, recorderFor(config.Group{RawLog: &on}, raw))
 	// testify's Nil also accepts a nil *logger.Raw stored in the interface.
-	// The listener compares the interface with nil, so only == nil proves
-	// that it will not call Record.
+	// The listener compares the interface with nil. Only == nil proves that
+	// it will not call Record.
 	rec := recorderFor(config.Group{RawLog: &off}, raw)
 	assert.True(t, rec == nil, "recorderFor returned %T, not a nil interface", rec)
 }

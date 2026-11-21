@@ -214,7 +214,7 @@ func count(out <-chan multicast.Packet, groups []string) map[string]uint64 {
 
 // formatCounts writes the counts as packets.<group>=n pairs sorted by group
 // name. The fixed keys of the log lines (op, total, raw_dropped, stop_ms) hold
-// no dot. A group name can therefore never repeat one of them.
+// no dot. No group name can repeat one of them.
 func formatCounts(counts map[string]uint64) string {
 	var b strings.Builder
 	for i, group := range slices.Sorted(maps.Keys(counts)) {

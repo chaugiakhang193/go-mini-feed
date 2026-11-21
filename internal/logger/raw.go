@@ -22,9 +22,10 @@ const flushInterval = time.Second
 
 var _ multicast.Recorder = (*Raw)(nil)
 
-// ErrWrite is returned by Close when at least one raw file failed to open,
-// write, flush or close, so packets were lost. Each failing file is logged
-// once as op=raw_log_write_failed with the cause.
+// ErrWrite is returned by Close when an operation on at least one raw file
+// failed. The operation is opening, writing, flushing or closing. The error
+// does not say how many packets were lost. Each failing file is logged once as
+// op=raw_log_write_failed with the cause.
 var ErrWrite = errors.New("raw log write failed")
 
 // Raw writes packets to <dir>/<YYYY-MM-DD>/<market>/<group>.raw, one line per
@@ -76,7 +77,7 @@ func newRaw(dir, market string, queueSize int, gate <-chan struct{}) *Raw {
 }
 
 // Record queues p for the writer without blocking. A full queue drops the
-// packet and counts it, so a slow disk never stalls the socket reader.
+// packet and counts it. A slow disk never stalls the socket reader.
 func (r *Raw) Record(p multicast.Packet) bool {
 	select {
 	case r.queue <- p:
@@ -136,7 +137,7 @@ func (r *Raw) run(gate <-chan struct{}) {
 
 func (r *Raw) write(p multicast.Packet) {
 	at := p.ReceivedAt.UTC()
-	// The date comes from the receive time, so a packet received just before
+	// The date comes from the receive time. A packet received just before
 	// midnight lands in that day's file even when it is written after.
 	day := at.Format(time.DateOnly)
 	if day != r.day {
