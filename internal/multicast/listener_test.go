@@ -173,3 +173,28 @@ func TestRunReturnsAReadErrorOfTheSocket(t *testing.T) {
 	assert.Contains(t, err.Error(), "group price")
 	assert.Contains(t, err.Error(), "boom")
 }
+
+// countingReader returns one byte from every Read and counts the calls.
+type countingReader struct {
+	reads atomic.Int64
+}
+
+func (r *countingReader) Read(b []byte) (int, error) {
+	r.reads.Add(1)
+	b[0] = 'x'
+	return 1, nil
+}
+
+func (r *countingReader) SetReadDeadline(time.Time) error { return nil }
+
+func TestRunDoesNotReadOnceCancelled(t *testing.T) {
+	r := &countingReader{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	out := make(chan Packet, 1)
+
+	err := NewListener("price", r, testDeadline, nil).Run(ctx, out)
+
+	assert.NoError(t, err)
+	assert.Zero(t, r.reads.Load(), "reads after the context ended")
+}

@@ -57,6 +57,11 @@ func NewListener(group string, conn reader, deadline time.Duration, rec Recorder
 func (l *Listener) Run(ctx context.Context, out chan<- Packet) error {
 	buf := make([]byte, maxDatagram)
 	for {
+		// When out has room and ctx is done, the select below picks either
+		// case at random, so the context is checked before every read.
+		if ctx.Err() != nil {
+			return nil
+		}
 		if err := l.conn.SetReadDeadline(time.Now().Add(l.deadline)); err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				return nil
