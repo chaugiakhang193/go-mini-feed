@@ -24,7 +24,8 @@ func (b ReadBuffer) Short() bool {
 
 // Join opens a socket on the port of g, joins its group on ifi (nil lets the
 // kernel pick the interface) and asks for a receive buffer of readBuffer
-// bytes. Join does not log. The caller reports the returned ReadBuffer.
+// bytes. The socket receives only the group of g, even when other groups use
+// the same port. Join does not log. The caller reports the returned ReadBuffer.
 func Join(g config.Group, ifi *net.Interface, readBuffer int) (*net.UDPConn, ReadBuffer, error) {
 	ip := net.ParseIP(g.Address)
 	if ip == nil {
@@ -33,6 +34,10 @@ func Join(g config.Group, ifi *net.Interface, readBuffer int) (*net.UDPConn, Rea
 	conn, err := net.ListenMulticastUDP("udp4", ifi, &net.UDPAddr{IP: ip, Port: g.Port})
 	if err != nil {
 		return nil, ReadBuffer{}, fmt.Errorf("group %s: join %s:%d: %w", g.Name, g.Address, g.Port, err)
+	}
+	if err := joinedGroupsOnly(conn); err != nil {
+		conn.Close()
+		return nil, ReadBuffer{}, fmt.Errorf("group %s: %w", g.Name, err)
 	}
 	buf, err := setReadBuffer(conn, readBuffer)
 	if err != nil {
