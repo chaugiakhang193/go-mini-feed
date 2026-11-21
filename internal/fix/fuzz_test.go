@@ -101,10 +101,11 @@ func FuzzEntries(f *testing.F) {
 	})
 }
 
-// checkGroup holds entries, returned without error, to what Entries promises:
-// as many entries as the count field declares, each opening at the delimiter
-// tag, built only from member tags without repeating one, and together
-// exactly the run of fields right after the count field.
+// checkGroup holds entries, returned without error, to what Entries promises.
+// There are as many entries as the count field declares. Each entry opens at
+// the delimiter tag and holds member tags without repeating one. Together the
+// entries are the run of fields right after the count field, and the field
+// that follows the run, if any, is not a member.
 func checkGroup(t *testing.T, fields []Field, spec GroupSpec, entries []Entry) {
 	t.Helper()
 	countAt := slices.IndexFunc(fields, func(f Field) bool { return f.Tag == spec.CountTag })
@@ -133,4 +134,8 @@ func checkGroup(t *testing.T, fields []Field, spec GroupSpec, entries []Entry) {
 	require.LessOrEqual(t, len(rebuilt), len(after), "entries hold more fields than follow the count")
 	assert.True(t, slices.Equal(after[:len(rebuilt)], rebuilt),
 		"entries are not the run of fields after the count")
+	if rest := after[len(rebuilt):]; len(rest) > 0 {
+		assert.NotContains(t, spec.Members, rest[0].Tag,
+			"group stops before member tag %d", rest[0].Tag)
+	}
 }
