@@ -1,6 +1,6 @@
 COMPOSE := docker compose -f deployments/docker-compose.yml
 
-.PHONY: help up down ps logs smoke config fmt vet test race
+.PHONY: help up down ps logs smoke config sim fmt vet test race
 
 help: ## List available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  %-8s %s\n", $$1, $$2}'
@@ -25,6 +25,9 @@ smoke: ## Check vhosts, the dev user and Redis in the running stack
 
 config: ## Load and print the gateway configuration
 	go run ./cmd/feed-gateway
+
+sim: ## Send simulated market data to the multicast groups (Ctrl+C stops)
+	go run ./cmd/feed-sim -scenario stream
 
 fmt: ## Format all Go code
 	go fmt ./...

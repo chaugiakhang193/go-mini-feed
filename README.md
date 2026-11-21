@@ -18,7 +18,7 @@ measure what happens when they are done wrong.
 | FIX 4.4 codec: encoding, decoding, BodyLength and CheckSum checks, repeating groups | done |
 | RabbitMQ labs: unroutable messages, publisher confirms, durability across a restart, retry limits, per-key order in a worker pool | done |
 | `feed-gateway` | loads and prints its configuration; networking planned |
-| `feed-sim` (exchange simulator) | planned |
+| `feed-sim` (exchange simulator) | done |
 | `feed-processor` | planned |
 | `feed-consumer` | planned |
 
@@ -158,6 +158,19 @@ make down
 RabbitMQ listens on `localhost:5673` with its management UI at `http://localhost:15673`, and Redis on
 `localhost:6381`. The `lab` / `lab` user exists for local development only, and every port binds to `127.0.0.1`.
 
+The simulator needs no containers. It sends each packet kind to the multicast group of the same name in
+`configs/multicast/demo.yaml`:
+
+```bash
+go run ./cmd/feed-sim -scenario one-tick    # a definition, an order book and a trade
+make sim                                    # a stream of prices, snapshots and heartbeats until Ctrl+C
+go run ./cmd/feed-sim -scenario stream -count 200 -drop 0.1 -dup 0.05 -reorder 0.05
+```
+
+`-drop`, `-dup` and `-reorder` make the network lose, repeat and swap packets after the sequence number (tag 34) is
+assigned, so a receiver sees gaps, repeats and out-of-order numbers. `-transport unicast` sends to `127.0.0.1` on the
+same ports instead of the groups. At the end it logs one `op=sim_done` line per packet kind with the counts.
+
 ## Labs
 
 Each program under `labs/rabbitmq/` tests one broker behaviour and prints what it measured. They need the local
@@ -207,8 +220,10 @@ Searching for `83=` in a message without tag 83 returns the value of LocationID 
 
 ```
 cmd/feed-gateway/          gateway entry point
+cmd/feed-sim/              exchange simulator: flags, UDP sockets, shutdown on Ctrl+C
 internal/config/           YAML + environment loading and validation
 internal/fix/              FIX tag=value encoding, decoding and repeating groups
+internal/sim/              synthetic market: instruments, packets, order books, trades, scenarios, network faults
 labs/rabbitmq/             RabbitMQ experiments, one program each
 labs/fixtraps/             deliberate FIX parsing mistakes next to the correct decoder
 configs/                   config.yaml and one multicast file per market
