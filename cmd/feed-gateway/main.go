@@ -33,6 +33,9 @@ import (
 // arriving. Logging per packet would flood the log at feed rates.
 const countInterval = 10 * time.Second
 
+// countPrefix starts the key of every per-group count in a log line.
+const countPrefix = "packets."
+
 func main() {
 	configPath := flag.String("config", "configs/config.yaml", "application config (structure layer)")
 	multicastPath := flag.String("multicast", "configs/multicast/demo.yaml", "multicast group file; its name is the market type")
@@ -209,14 +212,16 @@ func count(out <-chan multicast.Packet, groups []string) map[string]uint64 {
 	}
 }
 
-// formatCounts writes the counts as group=n pairs sorted by group name.
+// formatCounts writes the counts as packets.<group>=n pairs sorted by group
+// name. The fixed keys of the log lines (op, total, raw_dropped, stop_ms) hold
+// no dot. A group name can therefore never repeat one of them.
 func formatCounts(counts map[string]uint64) string {
 	var b strings.Builder
 	for i, group := range slices.Sorted(maps.Keys(counts)) {
 		if i > 0 {
 			b.WriteByte(' ')
 		}
-		fmt.Fprintf(&b, "%s=%d", group, counts[group])
+		fmt.Fprintf(&b, "%s%s=%d", countPrefix, group, counts[group])
 	}
 	return b.String()
 }

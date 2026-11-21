@@ -112,6 +112,12 @@ func TestRunCountsEachGroupAndStopsOnCancel(t *testing.T) {
 	assert.Empty(t, rawB)
 }
 
+func TestFormatCountsKeepsGroupsApartFromFixedKeys(t *testing.T) {
+	got := formatCounts(map[string]uint64{"op": 0, "price": 3})
+
+	assert.Equal(t, "packets.op=0 packets.price=3", got)
+}
+
 // brokenConn fails every read with a socket error.
 type brokenConn struct{}
 

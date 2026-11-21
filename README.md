@@ -184,7 +184,7 @@ loopback, stops the start-up: joining a group there succeeds and then receives n
 are written to `logs/<UTC date>/<market>/<group>.raw`, one line per packet: the receive time (RFC 3339, UTC), the
 payload length and the payload bytes unchanged, SOH and line breaks included. A full raw log queue drops packets and
 logs `op=raw_log_dropped` instead of slowing the socket reader. The gateway logs `op=packets` every 10 seconds while
-packets arrive and `op=gateway_stopped` with the count per group on exit. Groups may share a port: each socket
+packets arrive and `op=gateway_stopped` with the count per group on exit, as `packets.<group>=n`. Groups may share a port: each socket
 receives only the groups joined on it (on Linux, `IP_MULTICAST_ALL` is turned off).
 
 Each socket asks for `read_buffer_bytes` of receive buffer. Linux caps the request at `net.core.rmem_max` without an
