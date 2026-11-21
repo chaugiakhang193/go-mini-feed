@@ -216,6 +216,19 @@ go test -v ./labs/fixtraps
 An order book with six entries parsed into a map keeps one price, the last ask, and every level looks like an ask.
 Searching for `83=` in a message without tag 83 returns the value of LocationID (`283`).
 
+`labs/mcastdump` needs no stack either. It joins the four groups of `configs/multicast/demo.yaml` and prints every
+datagram on one line with the group, the length, tag 34 and the message, SOH shown as `|`. Start it first, then the
+simulator in a second terminal:
+
+```bash
+go run ./labs/mcastdump -count 3
+go run ./cmd/feed-sim -scenario one-tick
+```
+
+Each group has its own reader goroutine. The readers copy their datagrams into one channel with a buffer of 1024 and
+a single goroutine prints from it, so lines of different groups never interleave. `-count N` exits after N packets and
+`-transport unicast` listens on `127.0.0.1` instead of joining the groups (use the same flag on `feed-sim`).
+
 ## Layout
 
 ```
@@ -226,6 +239,7 @@ internal/fix/              FIX tag=value encoding, decoding and repeating groups
 internal/sim/              synthetic market: instruments, packets, order books, trades, scenarios, network faults
 labs/rabbitmq/             RabbitMQ experiments, one program each
 labs/fixtraps/             deliberate FIX parsing mistakes next to the correct decoder
+labs/mcastdump/            prints the datagrams of the multicast groups as they arrive
 configs/                   config.yaml and one multicast file per market
 deployments/               docker-compose and RabbitMQ definitions
 Makefile                   make help lists every target
