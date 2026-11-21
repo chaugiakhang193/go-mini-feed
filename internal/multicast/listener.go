@@ -50,6 +50,11 @@ func NewListener(group string, conn reader, deadline time.Duration, rec Recorder
 	return &Listener{group: group, conn: conn, deadline: deadline, rec: rec}
 }
 
+// Group returns the name of the group the listener reads.
+func (l *Listener) Group() string {
+	return l.group
+}
+
 // Run sends every datagram to out until ctx ends or the socket is closed, and
 // then returns nil. Any other socket error is returned, since a socket that
 // fails once usually keeps failing. A full out blocks Run, which keeps every

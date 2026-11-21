@@ -154,8 +154,12 @@ func run(ctx context.Context, ls []*multicast.Listener, queueSize int, raw *logg
 			}
 		})
 	}
+	groups := make([]string, len(ls))
+	for i, l := range ls {
+		groups[i] = l.Group()
+	}
 	counted := make(chan map[string]uint64, 1)
-	go func() { counted <- count(out) }()
+	go func() { counted <- count(out, groups) }()
 
 	<-ctx.Done()
 	stopping := time.Now()
@@ -178,9 +182,13 @@ func run(ctx context.Context, ls []*multicast.Listener, queueSize int, raw *logg
 }
 
 // count stands in for the publisher: it drains out until the channel is
-// closed and logs the counts every countInterval while they grow.
-func count(out <-chan multicast.Packet) map[string]uint64 {
-	counts := make(map[string]uint64)
+// closed and logs the counts every countInterval while they grow. A group
+// that delivers no packet still appears in the result with a count of 0.
+func count(out <-chan multicast.Packet, groups []string) map[string]uint64 {
+	counts := make(map[string]uint64, len(groups))
+	for _, g := range groups {
+		counts[g] = 0
+	}
 	var total, reported uint64
 	ticker := time.NewTicker(countInterval)
 	defer ticker.Stop()

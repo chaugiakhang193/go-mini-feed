@@ -63,8 +63,10 @@ const testDeadline = 500 * time.Millisecond
 func TestRunCountsEachGroupAndStopsOnCancel(t *testing.T) {
 	dir := t.TempDir()
 	raw := logger.NewRaw(dir, "demo", 16)
-	a, clientA := loopbackListener(t, "a", raw)
-	b, clientB := loopbackListener(t, "b", nil)
+	on, off := true, false
+	a, clientA := loopbackListener(t, "a", recorderFor(config.Group{RawLog: &on}, raw))
+	b, clientB := loopbackListener(t, "b", recorderFor(config.Group{RawLog: &off}, raw))
+	c, _ := loopbackListener(t, "c", nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	type result struct {
 		counts map[string]uint64
@@ -72,7 +74,7 @@ func TestRunCountsEachGroupAndStopsOnCancel(t *testing.T) {
 	}
 	done := make(chan result, 1)
 	go func() {
-		counts, err := run(ctx, []*multicast.Listener{a, b}, 16, raw)
+		counts, err := run(ctx, []*multicast.Listener{a, b, c}, 16, raw)
 		done <- result{counts, err}
 	}()
 
@@ -91,17 +93,23 @@ func TestRunCountsEachGroupAndStopsOnCancel(t *testing.T) {
 	select {
 	case res := <-done:
 		require.NoError(t, res.err)
-		assert.Equal(t, map[string]uint64{"a": 2, "b": 1}, res.counts)
+		assert.Equal(t, map[string]uint64{"a": 2, "b": 1, "c": 0}, res.counts)
 	case <-time.After(2 * time.Second):
 		require.FailNow(t, "run did not return after cancel")
 	}
 	assert.LessOrEqual(t, time.Since(cancelled), testDeadline+100*time.Millisecond)
 
-	today := time.Now().UTC().Format(time.DateOnly)
-	lines, err := os.ReadFile(filepath.Join(dir, today, "demo", "a.raw"))
+	// The day directory is matched with a wildcard so the test does not
+	// depend on the date at which the packets were received.
+	rawA, err := filepath.Glob(filepath.Join(dir, "*", "demo", "a.raw"))
+	require.NoError(t, err)
+	require.Len(t, rawA, 1)
+	lines, err := os.ReadFile(rawA[0])
 	require.NoError(t, err)
 	assert.Equal(t, 2, bytes.Count(lines, []byte("\n")))
-	assert.NoFileExists(t, filepath.Join(dir, today, "demo", "b.raw"))
+	rawB, err := filepath.Glob(filepath.Join(dir, "*", "demo", "b.raw"))
+	require.NoError(t, err)
+	assert.Empty(t, rawB)
 }
 
 // brokenConn fails every read with a socket error.
@@ -136,7 +144,9 @@ func TestRecorderForSkipsGroupsWithoutRawLog(t *testing.T) {
 	on, off := true, false
 
 	assert.Same(t, raw, recorderFor(config.Group{RawLog: &on}, raw))
-	// A nil *logger.Raw stored in the interface would not compare equal to
-	// nil, and the listener would call Record on it.
-	assert.Nil(t, recorderFor(config.Group{RawLog: &off}, raw))
+	// testify's Nil also accepts a nil *logger.Raw stored in the interface.
+	// The listener compares the interface with nil, so only == nil proves
+	// that it will not call Record.
+	rec := recorderFor(config.Group{RawLog: &off}, raw)
+	assert.True(t, rec == nil, "recorderFor returned %T, not a nil interface", rec)
 }
