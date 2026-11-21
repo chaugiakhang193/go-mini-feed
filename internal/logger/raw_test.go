@@ -113,8 +113,29 @@ func TestRawReportsAFailingFileOnce(t *testing.T) {
 	for range 3 {
 		require.True(t, r.Record(packet("price", "2026-11-21T09:00:00Z", "x")))
 	}
-	require.NoError(t, r.Close())
+	assert.ErrorIs(t, r.Close(), ErrWrite)
 
 	assert.Equal(t, 1, strings.Count(logs.String(), "op=raw_log_write_failed"))
 	assert.Contains(t, logs.String(), "price.raw")
+}
+
+func TestRawLogsAFlushErrorOnceAndFailsClose(t *testing.T) {
+	if _, err := os.Stat("/dev/full"); err != nil {
+		t.Skipf("no /dev/full: %v", err)
+	}
+	logs := captureLog(t)
+	dir := t.TempDir()
+	groupDir := filepath.Join(dir, "2026-11-21", "demo")
+	require.NoError(t, os.MkdirAll(groupDir, 0o755))
+	require.NoError(t, os.Symlink("/dev/full", filepath.Join(groupDir, "price.raw")))
+	r := NewRaw(dir, "demo", 8)
+
+	// The payload is larger than the 4096-byte bufio buffer, so the write
+	// reaches the file at once and fails with ENOSPC.
+	require.True(t, r.Record(packet("price", "2026-11-21T09:00:00Z", strings.Repeat("x", 5000))))
+	err := r.Close()
+
+	require.ErrorIs(t, err, ErrWrite)
+	assert.NotContains(t, err.Error(), "no space left")
+	assert.Equal(t, 1, strings.Count(logs.String(), "op=raw_log_write_failed"))
 }

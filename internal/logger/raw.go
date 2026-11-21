@@ -22,6 +22,11 @@ const flushInterval = time.Second
 
 var _ multicast.Recorder = (*Raw)(nil)
 
+// ErrWrite is returned by Close when at least one raw file failed to open,
+// write, flush or close, so packets were lost. Each failing file is logged
+// once as op=raw_log_write_failed with the cause.
+var ErrWrite = errors.New("raw log write failed")
+
 // Raw writes packets to <dir>/<YYYY-MM-DD>/<market>/<group>.raw, one line per
 // packet:
 //
@@ -42,7 +47,6 @@ type Raw struct {
 	failed   map[string]bool
 	reported uint64
 	line     []byte
-	err      error
 }
 
 type rawFile struct {
@@ -88,13 +92,19 @@ func (r *Raw) Dropped() uint64 {
 	return r.dropped.Load()
 }
 
-// Close writes every queued packet, flushes and closes the files, and returns
-// the first error of that final flush. Close must be called once, after every
-// goroutine that calls Record has returned.
+// Close writes every queued packet, flushes and closes the files. It returns
+// ErrWrite with the number of failed files when any file lost packets, and nil
+// otherwise. The cause of each failure was logged when it happened. Close must
+// be called once, after every goroutine that calls Record has returned.
 func (r *Raw) Close() error {
 	close(r.queue)
 	<-r.done
-	return r.err
+	// The writer has exited and closing done orders its last write to failed
+	// before this read.
+	if len(r.failed) > 0 {
+		return fmt.Errorf("%w: %d file(s)", ErrWrite, len(r.failed))
+	}
+	return nil
 }
 
 func (r *Raw) run(gate <-chan struct{}) {
@@ -108,7 +118,7 @@ func (r *Raw) run(gate <-chan struct{}) {
 		select {
 		case p, ok := <-r.queue:
 			if !ok {
-				r.err = r.closeFiles(false)
+				r.closeFiles()
 				r.reportDropped()
 				return
 			}
@@ -130,7 +140,7 @@ func (r *Raw) write(p multicast.Packet) {
 	// midnight lands in that day's file even when it is written after.
 	day := at.Format(time.DateOnly)
 	if day != r.day {
-		r.closeFiles(true)
+		r.closeFiles()
 		r.day = day
 	}
 	path := filepath.Join(r.dir, day, r.market, p.Group+".raw")
@@ -167,21 +177,15 @@ func (r *Raw) open(path string) (*rawFile, error) {
 	return rf, nil
 }
 
-// closeFiles flushes and closes every open file. On a day change the errors
-// are logged, since no caller waits for them. On Close they are returned.
-func (r *Raw) closeFiles(logErrors bool) error {
-	var errs []error
+// closeFiles flushes and closes every open file. A failure is logged once per
+// file by fail.
+func (r *Raw) closeFiles() {
 	for path, rf := range r.files {
-		err := errors.Join(rf.w.Flush(), rf.f.Close())
-		if err != nil {
-			if logErrors {
-				r.fail(path, err)
-			}
-			errs = append(errs, fmt.Errorf("raw log %s: %w", path, err))
+		if err := errors.Join(rf.w.Flush(), rf.f.Close()); err != nil {
+			r.fail(path, err)
 		}
 		delete(r.files, path)
 	}
-	return errors.Join(errs...)
 }
 
 // fail logs the first error of each file. A full disk fails every later write

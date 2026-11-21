@@ -172,7 +172,7 @@ func run(ctx context.Context, ls []*multicast.Listener, queueSize int, raw *logg
 		all = append(all, err)
 	}
 	if closeErr != nil {
-		all = append(all, fmt.Errorf("raw log: %w", closeErr))
+		all = append(all, closeErr)
 	}
 	return counts, errors.Join(all...)
 }
