@@ -194,6 +194,11 @@ func sequence(data []byte) string {
 	return "?"
 }
 
+// lineEscapes shows SOH as "|" and writes CR and LF as the two-character
+// escapes \r and \n. A datagram that carries a line break still prints on one
+// line.
+var lineEscapes = strings.NewReplacer(string(fix.SOH), "|", "\r", `\r`, "\n", `\n`)
+
 func readable(data []byte) string {
-	return strings.ReplaceAll(string(data), string(fix.SOH), "|")
+	return lineEscapes.Replace(string(data))
 }

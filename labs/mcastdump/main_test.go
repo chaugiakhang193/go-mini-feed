@@ -40,6 +40,12 @@ func TestDescribePrintsBytesThatAreNotFIX(t *testing.T) {
 	assert.Equal(t, "group=price len=6 seq=? hello|", line)
 }
 
+func TestDescribeKeepsADatagramOnOneLine(t *testing.T) {
+	line := describe(packet{group: "price", data: []byte("a\nb\r\x01")})
+
+	assert.Equal(t, `group=price len=5 seq=? a\nb\r|`, line)
+}
+
 // listenLoopback opens a UDP socket on a random port of 127.0.0.1 per group.
 func listenLoopback(t *testing.T, groups ...string) []listener {
 	t.Helper()
